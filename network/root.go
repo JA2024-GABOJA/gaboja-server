@@ -29,6 +29,23 @@ func (u MemberResponse) GetResult() interface{} {
 	return u.MemberInfo
 }
 
+type WeatherInfo struct {
+	Weather string `json:"weather"`
+}
+
+type WeatherResponse struct {
+	Message     string
+	WeatherInfo *WeatherInfo
+}
+
+func (w WeatherResponse) GetMessage() string {
+	return w.Message
+}
+
+func (w WeatherResponse) GetResult() interface{} {
+	return w.WeatherInfo
+}
+
 func NewNetwork(lc fx.Lifecycle) *gin.Engine {
 	r := gin.Default()
 	srv := &http.Server{
@@ -70,7 +87,22 @@ func (s *Network) HealthCheck() {
 	})
 }
 
+func (s *Network) GetWeatherInfo() {
+	s.engine.GET("/weatherInfo", func(c *gin.Context) {
+		result := &WeatherInfo{
+			Weather: "폭염",
+		}
+
+		response := WeatherResponse{
+			Message:     "날씨 조회 성공",
+			WeatherInfo: result,
+		}
+
+		s.OkResponse(c, response)
+	})
+}
+
 func (s *Network) RegisterRoutes() {
 	s.HealthCheck()
-	RegisterWeatherRoutes(s.engine)
+	s.GetWeatherInfo()
 }

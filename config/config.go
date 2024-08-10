@@ -20,7 +20,9 @@ type Config struct {
 
 	WeatherApi struct {
 		Url         string
+		SideUrl     string
 		AirPortCode string
+		Key         string
 	}
 }
 
