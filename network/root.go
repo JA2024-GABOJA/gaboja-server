@@ -30,7 +30,9 @@ func (u MemberResponse) GetResult() interface{} {
 }
 
 type WeatherInfo struct {
-	Weather string `json:"weather"`
+	Weather   string `json:"weather"`
+	Condition string `json:"condition"`
+	Gap       int    `json:"gap"`
 }
 
 type WeatherResponse struct {
@@ -90,7 +92,9 @@ func (s *Network) HealthCheck() {
 func (s *Network) GetWeatherInfo() {
 	s.engine.GET("/weatherInfo", func(c *gin.Context) {
 		result := &WeatherInfo{
-			Weather: "폭염",
+			Weather:   "폭염",
+			Condition: "cloudy",
+			Gap:       33 - 32, // 오늘 기온과 어제 기온의 차이, TODO: 이후에 API로 기온 통신 필요
 		}
 
 		response := WeatherResponse{
