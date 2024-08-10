@@ -135,7 +135,7 @@ func (s *Network) GetWeatherInfo() {
 }
 
 func (s *Network) GetBestRoutes() {
-	s.engine.GET("/findPath", func(c *gin.Context) {
+	s.engine.GET("/findRoutes", func(c *gin.Context) {
 		conf := flag.String("findPathConf", "../config/config.toml", "config file not found")
 		bestConf := config.NewConfig(*conf)
 		client, err := db.NewDb(*conf)
