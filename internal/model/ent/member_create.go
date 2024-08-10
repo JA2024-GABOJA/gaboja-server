@@ -4,7 +4,9 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"junction/internal/model/ent/jupginglog"
 	"junction/internal/model/ent/member"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -16,6 +18,27 @@ type MemberCreate struct {
 	config
 	mutation *MemberMutation
 	hooks    []Hook
+}
+
+// SetSno sets the "sno" field.
+func (mc *MemberCreate) SetSno(i int) *MemberCreate {
+	mc.mutation.SetSno(i)
+	return mc
+}
+
+// AddJupgingLogIDs adds the "jupgingLog" edge to the JupgingLog entity by IDs.
+func (mc *MemberCreate) AddJupgingLogIDs(ids ...int) *MemberCreate {
+	mc.mutation.AddJupgingLogIDs(ids...)
+	return mc
+}
+
+// AddJupgingLog adds the "jupgingLog" edges to the JupgingLog entity.
+func (mc *MemberCreate) AddJupgingLog(j ...*JupgingLog) *MemberCreate {
+	ids := make([]int, len(j))
+	for i := range j {
+		ids[i] = j[i].ID
+	}
+	return mc.AddJupgingLogIDs(ids...)
 }
 
 // Mutation returns the MemberMutation object of the builder.
@@ -52,6 +75,9 @@ func (mc *MemberCreate) ExecX(ctx context.Context) {
 
 // check runs all checks and user-defined validators on the builder.
 func (mc *MemberCreate) check() error {
+	if _, ok := mc.mutation.Sno(); !ok {
+		return &ValidationError{Name: "sno", err: errors.New(`ent: missing required field "Member.sno"`)}
+	}
 	return nil
 }
 
@@ -78,6 +104,26 @@ func (mc *MemberCreate) createSpec() (*Member, *sqlgraph.CreateSpec) {
 		_node = &Member{config: mc.config}
 		_spec = sqlgraph.NewCreateSpec(member.Table, sqlgraph.NewFieldSpec(member.FieldID, field.TypeInt))
 	)
+	if value, ok := mc.mutation.Sno(); ok {
+		_spec.SetField(member.FieldSno, field.TypeInt, value)
+		_node.Sno = value
+	}
+	if nodes := mc.mutation.JupgingLogIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   member.JupgingLogTable,
+			Columns: []string{member.JupgingLogColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(jupginglog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	return _node, _spec
 }
 

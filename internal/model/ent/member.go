@@ -13,10 +13,33 @@ import (
 
 // Member is the model entity for the Member schema.
 type Member struct {
-	config
+	config `json:"-"`
 	// ID of the ent.
-	ID           int `json:"id,omitempty"`
+	ID int `json:"id,omitempty"`
+	// Sno holds the value of the "sno" field.
+	Sno int `json:"sno,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the MemberQuery when eager-loading is set.
+	Edges        MemberEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// MemberEdges holds the relations/edges for other nodes in the graph.
+type MemberEdges struct {
+	// JupgingLog holds the value of the jupgingLog edge.
+	JupgingLog []*JupgingLog `json:"jupgingLog,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// JupgingLogOrErr returns the JupgingLog value or an error if the edge
+// was not loaded in eager-loading.
+func (e MemberEdges) JupgingLogOrErr() ([]*JupgingLog, error) {
+	if e.loadedTypes[0] {
+		return e.JupgingLog, nil
+	}
+	return nil, &NotLoadedError{edge: "jupgingLog"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -24,7 +47,7 @@ func (*Member) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case member.FieldID:
+		case member.FieldID, member.FieldSno:
 			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -47,6 +70,12 @@ func (m *Member) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			m.ID = int(value.Int64)
+		case member.FieldSno:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field sno", values[i])
+			} else if value.Valid {
+				m.Sno = int(value.Int64)
+			}
 		default:
 			m.selectValues.Set(columns[i], values[i])
 		}
@@ -58,6 +87,11 @@ func (m *Member) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (m *Member) Value(name string) (ent.Value, error) {
 	return m.selectValues.Get(name)
+}
+
+// QueryJupgingLog queries the "jupgingLog" edge of the Member entity.
+func (m *Member) QueryJupgingLog() *JupgingLogQuery {
+	return NewMemberClient(m.config).QueryJupgingLog(m)
 }
 
 // Update returns a builder for updating this Member.
@@ -82,7 +116,9 @@ func (m *Member) Unwrap() *Member {
 func (m *Member) String() string {
 	var builder strings.Builder
 	builder.WriteString("Member(")
-	builder.WriteString(fmt.Sprintf("id=%v", m.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", m.ID))
+	builder.WriteString("sno=")
+	builder.WriteString(fmt.Sprintf("%v", m.Sno))
 	builder.WriteByte(')')
 	return builder.String()
 }

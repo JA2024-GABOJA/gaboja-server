@@ -24,6 +24,10 @@ type Config struct {
 		AirPortCode string
 		Key         string
 	}
+
+	FindPathApi struct {
+		Url string
+	}
 }
 
 func NewConfig(filePath string) *Config {

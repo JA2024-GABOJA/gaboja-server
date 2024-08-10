@@ -4,7 +4,9 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
+	"junction/internal/model/ent/jupginglog"
 	"junction/internal/model/ent/member"
 	"junction/internal/model/ent/predicate"
 	"math"
@@ -18,10 +20,11 @@ import (
 // MemberQuery is the builder for querying Member entities.
 type MemberQuery struct {
 	config
-	ctx        *QueryContext
-	order      []member.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Member
+	ctx            *QueryContext
+	order          []member.OrderOption
+	inters         []Interceptor
+	predicates     []predicate.Member
+	withJupgingLog *JupgingLogQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -56,6 +59,28 @@ func (mq *MemberQuery) Unique(unique bool) *MemberQuery {
 func (mq *MemberQuery) Order(o ...member.OrderOption) *MemberQuery {
 	mq.order = append(mq.order, o...)
 	return mq
+}
+
+// QueryJupgingLog chains the current query on the "jupgingLog" edge.
+func (mq *MemberQuery) QueryJupgingLog() *JupgingLogQuery {
+	query := (&JupgingLogClient{config: mq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := mq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := mq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(member.Table, member.FieldID, selector),
+			sqlgraph.To(jupginglog.Table, jupginglog.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, member.JupgingLogTable, member.JupgingLogColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(mq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first Member entity from the query.
@@ -245,19 +270,43 @@ func (mq *MemberQuery) Clone() *MemberQuery {
 		return nil
 	}
 	return &MemberQuery{
-		config:     mq.config,
-		ctx:        mq.ctx.Clone(),
-		order:      append([]member.OrderOption{}, mq.order...),
-		inters:     append([]Interceptor{}, mq.inters...),
-		predicates: append([]predicate.Member{}, mq.predicates...),
+		config:         mq.config,
+		ctx:            mq.ctx.Clone(),
+		order:          append([]member.OrderOption{}, mq.order...),
+		inters:         append([]Interceptor{}, mq.inters...),
+		predicates:     append([]predicate.Member{}, mq.predicates...),
+		withJupgingLog: mq.withJupgingLog.Clone(),
 		// clone intermediate query.
 		sql:  mq.sql.Clone(),
 		path: mq.path,
 	}
 }
 
+// WithJupgingLog tells the query-builder to eager-load the nodes that are connected to
+// the "jupgingLog" edge. The optional arguments are used to configure the query builder of the edge.
+func (mq *MemberQuery) WithJupgingLog(opts ...func(*JupgingLogQuery)) *MemberQuery {
+	query := (&JupgingLogClient{config: mq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	mq.withJupgingLog = query
+	return mq
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
+//
+// Example:
+//
+//	var v []struct {
+//		Sno int `json:"sno,omitempty"`
+//		Count int `json:"count,omitempty"`
+//	}
+//
+//	client.Member.Query().
+//		GroupBy(member.FieldSno).
+//		Aggregate(ent.Count()).
+//		Scan(ctx, &v)
 func (mq *MemberQuery) GroupBy(field string, fields ...string) *MemberGroupBy {
 	mq.ctx.Fields = append([]string{field}, fields...)
 	grbuild := &MemberGroupBy{build: mq}
@@ -269,6 +318,16 @@ func (mq *MemberQuery) GroupBy(field string, fields ...string) *MemberGroupBy {
 
 // Select allows the selection one or more fields/columns for the given query,
 // instead of selecting all fields in the entity.
+//
+// Example:
+//
+//	var v []struct {
+//		Sno int `json:"sno,omitempty"`
+//	}
+//
+//	client.Member.Query().
+//		Select(member.FieldSno).
+//		Scan(ctx, &v)
 func (mq *MemberQuery) Select(fields ...string) *MemberSelect {
 	mq.ctx.Fields = append(mq.ctx.Fields, fields...)
 	sbuild := &MemberSelect{MemberQuery: mq}
@@ -310,8 +369,11 @@ func (mq *MemberQuery) prepareQuery(ctx context.Context) error {
 
 func (mq *MemberQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Member, error) {
 	var (
-		nodes = []*Member{}
-		_spec = mq.querySpec()
+		nodes       = []*Member{}
+		_spec       = mq.querySpec()
+		loadedTypes = [1]bool{
+			mq.withJupgingLog != nil,
+		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Member).scanValues(nil, columns)
@@ -319,6 +381,7 @@ func (mq *MemberQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Membe
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &Member{config: mq.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -330,7 +393,45 @@ func (mq *MemberQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Membe
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := mq.withJupgingLog; query != nil {
+		if err := mq.loadJupgingLog(ctx, query, nodes,
+			func(n *Member) { n.Edges.JupgingLog = []*JupgingLog{} },
+			func(n *Member, e *JupgingLog) { n.Edges.JupgingLog = append(n.Edges.JupgingLog, e) }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
+}
+
+func (mq *MemberQuery) loadJupgingLog(ctx context.Context, query *JupgingLogQuery, nodes []*Member, init func(*Member), assign func(*Member, *JupgingLog)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Member)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(jupginglog.FieldMemberID)
+	}
+	query.Where(predicate.JupgingLog(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(member.JupgingLogColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.MemberID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "member_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
 }
 
 func (mq *MemberQuery) sqlCount(ctx context.Context) (int, error) {

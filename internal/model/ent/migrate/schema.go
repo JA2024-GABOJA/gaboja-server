@@ -8,9 +8,32 @@ import (
 )
 
 var (
+	// JupgingLogsColumns holds the columns for the "jupging_logs" table.
+	JupgingLogsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "start_date", Type: field.TypeString},
+		{Name: "end_date", Type: field.TypeString},
+		{Name: "log", Type: field.TypeString, Size: 2147483647},
+		{Name: "member_id", Type: field.TypeInt},
+	}
+	// JupgingLogsTable holds the schema information for the "jupging_logs" table.
+	JupgingLogsTable = &schema.Table{
+		Name:       "jupging_logs",
+		Columns:    JupgingLogsColumns,
+		PrimaryKey: []*schema.Column{JupgingLogsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "jupging_logs_members_jupgingLog",
+				Columns:    []*schema.Column{JupgingLogsColumns[4]},
+				RefColumns: []*schema.Column{MembersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// MembersColumns holds the columns for the "members" table.
 	MembersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "sno", Type: field.TypeInt, Unique: true},
 	}
 	// MembersTable holds the schema information for the "members" table.
 	MembersTable = &schema.Table{
@@ -20,9 +43,11 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		JupgingLogsTable,
 		MembersTable,
 	}
 )
 
 func init() {
+	JupgingLogsTable.ForeignKeys[0].RefTable = MembersTable
 }

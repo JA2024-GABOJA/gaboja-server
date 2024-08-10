@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"junction/internal/model/ent/jupginglog"
 	"junction/internal/model/ent/member"
 	"reflect"
 	"sync"
@@ -73,7 +74,8 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			member.Table: member.ValidColumn,
+			jupginglog.Table: jupginglog.ValidColumn,
+			member.Table:     member.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

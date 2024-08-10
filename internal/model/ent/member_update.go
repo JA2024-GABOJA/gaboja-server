@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"junction/internal/model/ent/jupginglog"
 	"junction/internal/model/ent/member"
 	"junction/internal/model/ent/predicate"
 
@@ -27,9 +28,66 @@ func (mu *MemberUpdate) Where(ps ...predicate.Member) *MemberUpdate {
 	return mu
 }
 
+// SetSno sets the "sno" field.
+func (mu *MemberUpdate) SetSno(i int) *MemberUpdate {
+	mu.mutation.ResetSno()
+	mu.mutation.SetSno(i)
+	return mu
+}
+
+// SetNillableSno sets the "sno" field if the given value is not nil.
+func (mu *MemberUpdate) SetNillableSno(i *int) *MemberUpdate {
+	if i != nil {
+		mu.SetSno(*i)
+	}
+	return mu
+}
+
+// AddSno adds i to the "sno" field.
+func (mu *MemberUpdate) AddSno(i int) *MemberUpdate {
+	mu.mutation.AddSno(i)
+	return mu
+}
+
+// AddJupgingLogIDs adds the "jupgingLog" edge to the JupgingLog entity by IDs.
+func (mu *MemberUpdate) AddJupgingLogIDs(ids ...int) *MemberUpdate {
+	mu.mutation.AddJupgingLogIDs(ids...)
+	return mu
+}
+
+// AddJupgingLog adds the "jupgingLog" edges to the JupgingLog entity.
+func (mu *MemberUpdate) AddJupgingLog(j ...*JupgingLog) *MemberUpdate {
+	ids := make([]int, len(j))
+	for i := range j {
+		ids[i] = j[i].ID
+	}
+	return mu.AddJupgingLogIDs(ids...)
+}
+
 // Mutation returns the MemberMutation object of the builder.
 func (mu *MemberUpdate) Mutation() *MemberMutation {
 	return mu.mutation
+}
+
+// ClearJupgingLog clears all "jupgingLog" edges to the JupgingLog entity.
+func (mu *MemberUpdate) ClearJupgingLog() *MemberUpdate {
+	mu.mutation.ClearJupgingLog()
+	return mu
+}
+
+// RemoveJupgingLogIDs removes the "jupgingLog" edge to JupgingLog entities by IDs.
+func (mu *MemberUpdate) RemoveJupgingLogIDs(ids ...int) *MemberUpdate {
+	mu.mutation.RemoveJupgingLogIDs(ids...)
+	return mu
+}
+
+// RemoveJupgingLog removes "jupgingLog" edges to JupgingLog entities.
+func (mu *MemberUpdate) RemoveJupgingLog(j ...*JupgingLog) *MemberUpdate {
+	ids := make([]int, len(j))
+	for i := range j {
+		ids[i] = j[i].ID
+	}
+	return mu.RemoveJupgingLogIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -68,6 +126,57 @@ func (mu *MemberUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
+	if value, ok := mu.mutation.Sno(); ok {
+		_spec.SetField(member.FieldSno, field.TypeInt, value)
+	}
+	if value, ok := mu.mutation.AddedSno(); ok {
+		_spec.AddField(member.FieldSno, field.TypeInt, value)
+	}
+	if mu.mutation.JupgingLogCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   member.JupgingLogTable,
+			Columns: []string{member.JupgingLogColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(jupginglog.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := mu.mutation.RemovedJupgingLogIDs(); len(nodes) > 0 && !mu.mutation.JupgingLogCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   member.JupgingLogTable,
+			Columns: []string{member.JupgingLogColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(jupginglog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := mu.mutation.JupgingLogIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   member.JupgingLogTable,
+			Columns: []string{member.JupgingLogColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(jupginglog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, mu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{member.Label}
@@ -88,9 +197,66 @@ type MemberUpdateOne struct {
 	mutation *MemberMutation
 }
 
+// SetSno sets the "sno" field.
+func (muo *MemberUpdateOne) SetSno(i int) *MemberUpdateOne {
+	muo.mutation.ResetSno()
+	muo.mutation.SetSno(i)
+	return muo
+}
+
+// SetNillableSno sets the "sno" field if the given value is not nil.
+func (muo *MemberUpdateOne) SetNillableSno(i *int) *MemberUpdateOne {
+	if i != nil {
+		muo.SetSno(*i)
+	}
+	return muo
+}
+
+// AddSno adds i to the "sno" field.
+func (muo *MemberUpdateOne) AddSno(i int) *MemberUpdateOne {
+	muo.mutation.AddSno(i)
+	return muo
+}
+
+// AddJupgingLogIDs adds the "jupgingLog" edge to the JupgingLog entity by IDs.
+func (muo *MemberUpdateOne) AddJupgingLogIDs(ids ...int) *MemberUpdateOne {
+	muo.mutation.AddJupgingLogIDs(ids...)
+	return muo
+}
+
+// AddJupgingLog adds the "jupgingLog" edges to the JupgingLog entity.
+func (muo *MemberUpdateOne) AddJupgingLog(j ...*JupgingLog) *MemberUpdateOne {
+	ids := make([]int, len(j))
+	for i := range j {
+		ids[i] = j[i].ID
+	}
+	return muo.AddJupgingLogIDs(ids...)
+}
+
 // Mutation returns the MemberMutation object of the builder.
 func (muo *MemberUpdateOne) Mutation() *MemberMutation {
 	return muo.mutation
+}
+
+// ClearJupgingLog clears all "jupgingLog" edges to the JupgingLog entity.
+func (muo *MemberUpdateOne) ClearJupgingLog() *MemberUpdateOne {
+	muo.mutation.ClearJupgingLog()
+	return muo
+}
+
+// RemoveJupgingLogIDs removes the "jupgingLog" edge to JupgingLog entities by IDs.
+func (muo *MemberUpdateOne) RemoveJupgingLogIDs(ids ...int) *MemberUpdateOne {
+	muo.mutation.RemoveJupgingLogIDs(ids...)
+	return muo
+}
+
+// RemoveJupgingLog removes "jupgingLog" edges to JupgingLog entities.
+func (muo *MemberUpdateOne) RemoveJupgingLog(j ...*JupgingLog) *MemberUpdateOne {
+	ids := make([]int, len(j))
+	for i := range j {
+		ids[i] = j[i].ID
+	}
+	return muo.RemoveJupgingLogIDs(ids...)
 }
 
 // Where appends a list predicates to the MemberUpdate builder.
@@ -158,6 +324,57 @@ func (muo *MemberUpdateOne) sqlSave(ctx context.Context) (_node *Member, err err
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := muo.mutation.Sno(); ok {
+		_spec.SetField(member.FieldSno, field.TypeInt, value)
+	}
+	if value, ok := muo.mutation.AddedSno(); ok {
+		_spec.AddField(member.FieldSno, field.TypeInt, value)
+	}
+	if muo.mutation.JupgingLogCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   member.JupgingLogTable,
+			Columns: []string{member.JupgingLogColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(jupginglog.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := muo.mutation.RemovedJupgingLogIDs(); len(nodes) > 0 && !muo.mutation.JupgingLogCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   member.JupgingLogTable,
+			Columns: []string{member.JupgingLogColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(jupginglog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := muo.mutation.JupgingLogIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   member.JupgingLogTable,
+			Columns: []string{member.JupgingLogColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(jupginglog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Member{config: muo.config}
 	_spec.Assign = _node.assignValues

@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"junction/internal/model/ent/jupginglog"
+	"junction/internal/model/ent/member"
 	"junction/internal/model/ent/predicate"
 	"sync"
 
@@ -22,19 +24,576 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeMember = "Member"
+	TypeJupgingLog = "JupgingLog"
+	TypeMember     = "Member"
 )
 
-// MemberMutation represents an operation that mutates the Member nodes in the graph.
-type MemberMutation struct {
+// JupgingLogMutation represents an operation that mutates the JupgingLog nodes in the graph.
+type JupgingLogMutation struct {
 	config
 	op            Op
 	typ           string
 	id            *int
+	startDate     *string
+	endDate       *string
+	log           *string
 	clearedFields map[string]struct{}
+	member        *int
+	clearedmember bool
 	done          bool
-	oldValue      func(context.Context) (*Member, error)
-	predicates    []predicate.Member
+	oldValue      func(context.Context) (*JupgingLog, error)
+	predicates    []predicate.JupgingLog
+}
+
+var _ ent.Mutation = (*JupgingLogMutation)(nil)
+
+// jupginglogOption allows management of the mutation configuration using functional options.
+type jupginglogOption func(*JupgingLogMutation)
+
+// newJupgingLogMutation creates new mutation for the JupgingLog entity.
+func newJupgingLogMutation(c config, op Op, opts ...jupginglogOption) *JupgingLogMutation {
+	m := &JupgingLogMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeJupgingLog,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withJupgingLogID sets the ID field of the mutation.
+func withJupgingLogID(id int) jupginglogOption {
+	return func(m *JupgingLogMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *JupgingLog
+		)
+		m.oldValue = func(ctx context.Context) (*JupgingLog, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().JupgingLog.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withJupgingLog sets the old JupgingLog of the mutation.
+func withJupgingLog(node *JupgingLog) jupginglogOption {
+	return func(m *JupgingLogMutation) {
+		m.oldValue = func(context.Context) (*JupgingLog, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m JupgingLogMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m JupgingLogMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of JupgingLog entities.
+func (m *JupgingLogMutation) SetID(id int) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *JupgingLogMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *JupgingLogMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().JupgingLog.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetStartDate sets the "startDate" field.
+func (m *JupgingLogMutation) SetStartDate(s string) {
+	m.startDate = &s
+}
+
+// StartDate returns the value of the "startDate" field in the mutation.
+func (m *JupgingLogMutation) StartDate() (r string, exists bool) {
+	v := m.startDate
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStartDate returns the old "startDate" field's value of the JupgingLog entity.
+// If the JupgingLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JupgingLogMutation) OldStartDate(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStartDate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStartDate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStartDate: %w", err)
+	}
+	return oldValue.StartDate, nil
+}
+
+// ResetStartDate resets all changes to the "startDate" field.
+func (m *JupgingLogMutation) ResetStartDate() {
+	m.startDate = nil
+}
+
+// SetEndDate sets the "endDate" field.
+func (m *JupgingLogMutation) SetEndDate(s string) {
+	m.endDate = &s
+}
+
+// EndDate returns the value of the "endDate" field in the mutation.
+func (m *JupgingLogMutation) EndDate() (r string, exists bool) {
+	v := m.endDate
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEndDate returns the old "endDate" field's value of the JupgingLog entity.
+// If the JupgingLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JupgingLogMutation) OldEndDate(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEndDate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEndDate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEndDate: %w", err)
+	}
+	return oldValue.EndDate, nil
+}
+
+// ResetEndDate resets all changes to the "endDate" field.
+func (m *JupgingLogMutation) ResetEndDate() {
+	m.endDate = nil
+}
+
+// SetLog sets the "log" field.
+func (m *JupgingLogMutation) SetLog(s string) {
+	m.log = &s
+}
+
+// Log returns the value of the "log" field in the mutation.
+func (m *JupgingLogMutation) Log() (r string, exists bool) {
+	v := m.log
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLog returns the old "log" field's value of the JupgingLog entity.
+// If the JupgingLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JupgingLogMutation) OldLog(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLog is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLog requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLog: %w", err)
+	}
+	return oldValue.Log, nil
+}
+
+// ResetLog resets all changes to the "log" field.
+func (m *JupgingLogMutation) ResetLog() {
+	m.log = nil
+}
+
+// SetMemberID sets the "member_id" field.
+func (m *JupgingLogMutation) SetMemberID(i int) {
+	m.member = &i
+}
+
+// MemberID returns the value of the "member_id" field in the mutation.
+func (m *JupgingLogMutation) MemberID() (r int, exists bool) {
+	v := m.member
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMemberID returns the old "member_id" field's value of the JupgingLog entity.
+// If the JupgingLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JupgingLogMutation) OldMemberID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMemberID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMemberID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMemberID: %w", err)
+	}
+	return oldValue.MemberID, nil
+}
+
+// ResetMemberID resets all changes to the "member_id" field.
+func (m *JupgingLogMutation) ResetMemberID() {
+	m.member = nil
+}
+
+// ClearMember clears the "member" edge to the Member entity.
+func (m *JupgingLogMutation) ClearMember() {
+	m.clearedmember = true
+	m.clearedFields[jupginglog.FieldMemberID] = struct{}{}
+}
+
+// MemberCleared reports if the "member" edge to the Member entity was cleared.
+func (m *JupgingLogMutation) MemberCleared() bool {
+	return m.clearedmember
+}
+
+// MemberIDs returns the "member" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// MemberID instead. It exists only for internal usage by the builders.
+func (m *JupgingLogMutation) MemberIDs() (ids []int) {
+	if id := m.member; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetMember resets all changes to the "member" edge.
+func (m *JupgingLogMutation) ResetMember() {
+	m.member = nil
+	m.clearedmember = false
+}
+
+// Where appends a list predicates to the JupgingLogMutation builder.
+func (m *JupgingLogMutation) Where(ps ...predicate.JupgingLog) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the JupgingLogMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *JupgingLogMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.JupgingLog, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *JupgingLogMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *JupgingLogMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (JupgingLog).
+func (m *JupgingLogMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *JupgingLogMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.startDate != nil {
+		fields = append(fields, jupginglog.FieldStartDate)
+	}
+	if m.endDate != nil {
+		fields = append(fields, jupginglog.FieldEndDate)
+	}
+	if m.log != nil {
+		fields = append(fields, jupginglog.FieldLog)
+	}
+	if m.member != nil {
+		fields = append(fields, jupginglog.FieldMemberID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *JupgingLogMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case jupginglog.FieldStartDate:
+		return m.StartDate()
+	case jupginglog.FieldEndDate:
+		return m.EndDate()
+	case jupginglog.FieldLog:
+		return m.Log()
+	case jupginglog.FieldMemberID:
+		return m.MemberID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *JupgingLogMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case jupginglog.FieldStartDate:
+		return m.OldStartDate(ctx)
+	case jupginglog.FieldEndDate:
+		return m.OldEndDate(ctx)
+	case jupginglog.FieldLog:
+		return m.OldLog(ctx)
+	case jupginglog.FieldMemberID:
+		return m.OldMemberID(ctx)
+	}
+	return nil, fmt.Errorf("unknown JupgingLog field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *JupgingLogMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case jupginglog.FieldStartDate:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStartDate(v)
+		return nil
+	case jupginglog.FieldEndDate:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEndDate(v)
+		return nil
+	case jupginglog.FieldLog:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLog(v)
+		return nil
+	case jupginglog.FieldMemberID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMemberID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown JupgingLog field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *JupgingLogMutation) AddedFields() []string {
+	var fields []string
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *JupgingLogMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *JupgingLogMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown JupgingLog numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *JupgingLogMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *JupgingLogMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *JupgingLogMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown JupgingLog nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *JupgingLogMutation) ResetField(name string) error {
+	switch name {
+	case jupginglog.FieldStartDate:
+		m.ResetStartDate()
+		return nil
+	case jupginglog.FieldEndDate:
+		m.ResetEndDate()
+		return nil
+	case jupginglog.FieldLog:
+		m.ResetLog()
+		return nil
+	case jupginglog.FieldMemberID:
+		m.ResetMemberID()
+		return nil
+	}
+	return fmt.Errorf("unknown JupgingLog field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *JupgingLogMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.member != nil {
+		edges = append(edges, jupginglog.EdgeMember)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *JupgingLogMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case jupginglog.EdgeMember:
+		if id := m.member; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *JupgingLogMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *JupgingLogMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *JupgingLogMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedmember {
+		edges = append(edges, jupginglog.EdgeMember)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *JupgingLogMutation) EdgeCleared(name string) bool {
+	switch name {
+	case jupginglog.EdgeMember:
+		return m.clearedmember
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *JupgingLogMutation) ClearEdge(name string) error {
+	switch name {
+	case jupginglog.EdgeMember:
+		m.ClearMember()
+		return nil
+	}
+	return fmt.Errorf("unknown JupgingLog unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *JupgingLogMutation) ResetEdge(name string) error {
+	switch name {
+	case jupginglog.EdgeMember:
+		m.ResetMember()
+		return nil
+	}
+	return fmt.Errorf("unknown JupgingLog edge %s", name)
+}
+
+// MemberMutation represents an operation that mutates the Member nodes in the graph.
+type MemberMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	sno               *int
+	addsno            *int
+	clearedFields     map[string]struct{}
+	jupgingLog        map[int]struct{}
+	removedjupgingLog map[int]struct{}
+	clearedjupgingLog bool
+	done              bool
+	oldValue          func(context.Context) (*Member, error)
+	predicates        []predicate.Member
 }
 
 var _ ent.Mutation = (*MemberMutation)(nil)
@@ -135,6 +694,116 @@ func (m *MemberMutation) IDs(ctx context.Context) ([]int, error) {
 	}
 }
 
+// SetSno sets the "sno" field.
+func (m *MemberMutation) SetSno(i int) {
+	m.sno = &i
+	m.addsno = nil
+}
+
+// Sno returns the value of the "sno" field in the mutation.
+func (m *MemberMutation) Sno() (r int, exists bool) {
+	v := m.sno
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSno returns the old "sno" field's value of the Member entity.
+// If the Member object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MemberMutation) OldSno(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSno is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSno requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSno: %w", err)
+	}
+	return oldValue.Sno, nil
+}
+
+// AddSno adds i to the "sno" field.
+func (m *MemberMutation) AddSno(i int) {
+	if m.addsno != nil {
+		*m.addsno += i
+	} else {
+		m.addsno = &i
+	}
+}
+
+// AddedSno returns the value that was added to the "sno" field in this mutation.
+func (m *MemberMutation) AddedSno() (r int, exists bool) {
+	v := m.addsno
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSno resets all changes to the "sno" field.
+func (m *MemberMutation) ResetSno() {
+	m.sno = nil
+	m.addsno = nil
+}
+
+// AddJupgingLogIDs adds the "jupgingLog" edge to the JupgingLog entity by ids.
+func (m *MemberMutation) AddJupgingLogIDs(ids ...int) {
+	if m.jupgingLog == nil {
+		m.jupgingLog = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.jupgingLog[ids[i]] = struct{}{}
+	}
+}
+
+// ClearJupgingLog clears the "jupgingLog" edge to the JupgingLog entity.
+func (m *MemberMutation) ClearJupgingLog() {
+	m.clearedjupgingLog = true
+}
+
+// JupgingLogCleared reports if the "jupgingLog" edge to the JupgingLog entity was cleared.
+func (m *MemberMutation) JupgingLogCleared() bool {
+	return m.clearedjupgingLog
+}
+
+// RemoveJupgingLogIDs removes the "jupgingLog" edge to the JupgingLog entity by IDs.
+func (m *MemberMutation) RemoveJupgingLogIDs(ids ...int) {
+	if m.removedjupgingLog == nil {
+		m.removedjupgingLog = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.jupgingLog, ids[i])
+		m.removedjupgingLog[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedJupgingLog returns the removed IDs of the "jupgingLog" edge to the JupgingLog entity.
+func (m *MemberMutation) RemovedJupgingLogIDs() (ids []int) {
+	for id := range m.removedjupgingLog {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// JupgingLogIDs returns the "jupgingLog" edge IDs in the mutation.
+func (m *MemberMutation) JupgingLogIDs() (ids []int) {
+	for id := range m.jupgingLog {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetJupgingLog resets all changes to the "jupgingLog" edge.
+func (m *MemberMutation) ResetJupgingLog() {
+	m.jupgingLog = nil
+	m.clearedjupgingLog = false
+	m.removedjupgingLog = nil
+}
+
 // Where appends a list predicates to the MemberMutation builder.
 func (m *MemberMutation) Where(ps ...predicate.Member) {
 	m.predicates = append(m.predicates, ps...)
@@ -169,7 +838,10 @@ func (m *MemberMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MemberMutation) Fields() []string {
-	fields := make([]string, 0, 0)
+	fields := make([]string, 0, 1)
+	if m.sno != nil {
+		fields = append(fields, member.FieldSno)
+	}
 	return fields
 }
 
@@ -177,6 +849,10 @@ func (m *MemberMutation) Fields() []string {
 // return value indicates that this field was not set, or was not defined in the
 // schema.
 func (m *MemberMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case member.FieldSno:
+		return m.Sno()
+	}
 	return nil, false
 }
 
@@ -184,6 +860,10 @@ func (m *MemberMutation) Field(name string) (ent.Value, bool) {
 // returned if the mutation operation is not UpdateOne, or the query to the
 // database failed.
 func (m *MemberMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case member.FieldSno:
+		return m.OldSno(ctx)
+	}
 	return nil, fmt.Errorf("unknown Member field %s", name)
 }
 
@@ -192,6 +872,13 @@ func (m *MemberMutation) OldField(ctx context.Context, name string) (ent.Value, 
 // type.
 func (m *MemberMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case member.FieldSno:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSno(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Member field %s", name)
 }
@@ -199,13 +886,21 @@ func (m *MemberMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *MemberMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addsno != nil {
+		fields = append(fields, member.FieldSno)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *MemberMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case member.FieldSno:
+		return m.AddedSno()
+	}
 	return nil, false
 }
 
@@ -213,6 +908,15 @@ func (m *MemberMutation) AddedField(name string) (ent.Value, bool) {
 // the field is not defined in the schema, or if the type mismatched the field
 // type.
 func (m *MemberMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case member.FieldSno:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSno(v)
+		return nil
+	}
 	return fmt.Errorf("unknown Member numeric field %s", name)
 }
 
@@ -238,53 +942,94 @@ func (m *MemberMutation) ClearField(name string) error {
 // ResetField resets all changes in the mutation for the field with the given name.
 // It returns an error if the field is not defined in the schema.
 func (m *MemberMutation) ResetField(name string) error {
+	switch name {
+	case member.FieldSno:
+		m.ResetSno()
+		return nil
+	}
 	return fmt.Errorf("unknown Member field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *MemberMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.jupgingLog != nil {
+		edges = append(edges, member.EdgeJupgingLog)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *MemberMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case member.EdgeJupgingLog:
+		ids := make([]ent.Value, 0, len(m.jupgingLog))
+		for id := range m.jupgingLog {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *MemberMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.removedjupgingLog != nil {
+		edges = append(edges, member.EdgeJupgingLog)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *MemberMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case member.EdgeJupgingLog:
+		ids := make([]ent.Value, 0, len(m.removedjupgingLog))
+		for id := range m.removedjupgingLog {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *MemberMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedjupgingLog {
+		edges = append(edges, member.EdgeJupgingLog)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *MemberMutation) EdgeCleared(name string) bool {
+	switch name {
+	case member.EdgeJupgingLog:
+		return m.clearedjupgingLog
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *MemberMutation) ClearEdge(name string) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown Member unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *MemberMutation) ResetEdge(name string) error {
+	switch name {
+	case member.EdgeJupgingLog:
+		m.ResetJupgingLog()
+		return nil
+	}
 	return fmt.Errorf("unknown Member edge %s", name)
 }

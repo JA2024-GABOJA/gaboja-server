@@ -6,5 +6,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// JupgingLog is the predicate function for jupginglog builders.
+type JupgingLog func(*sql.Selector)
+
 // Member is the predicate function for member builders.
 type Member func(*sql.Selector)

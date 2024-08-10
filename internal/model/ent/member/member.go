@@ -4,6 +4,7 @@ package member
 
 import (
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -11,13 +12,25 @@ const (
 	Label = "member"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldSno holds the string denoting the sno field in the database.
+	FieldSno = "sno"
+	// EdgeJupgingLog holds the string denoting the jupginglog edge name in mutations.
+	EdgeJupgingLog = "jupgingLog"
 	// Table holds the table name of the member in the database.
 	Table = "members"
+	// JupgingLogTable is the table that holds the jupgingLog relation/edge.
+	JupgingLogTable = "jupging_logs"
+	// JupgingLogInverseTable is the table name for the JupgingLog entity.
+	// It exists in this package in order to avoid circular dependency with the "jupginglog" package.
+	JupgingLogInverseTable = "jupging_logs"
+	// JupgingLogColumn is the table column denoting the jupgingLog relation/edge.
+	JupgingLogColumn = "member_id"
 )
 
 // Columns holds all SQL columns for member fields.
 var Columns = []string{
 	FieldID,
+	FieldSno,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -36,4 +49,30 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// BySno orders the results by the sno field.
+func BySno(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSno, opts...).ToFunc()
+}
+
+// ByJupgingLogCount orders the results by jupgingLog count.
+func ByJupgingLogCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newJupgingLogStep(), opts...)
+	}
+}
+
+// ByJupgingLog orders the results by jupgingLog terms.
+func ByJupgingLog(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newJupgingLogStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newJupgingLogStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(JupgingLogInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, JupgingLogTable, JupgingLogColumn),
+	)
 }

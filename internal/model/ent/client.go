@@ -11,11 +11,13 @@ import (
 
 	"junction/internal/model/ent/migrate"
 
+	"junction/internal/model/ent/jupginglog"
 	"junction/internal/model/ent/member"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // Client is the client that holds all ent builders.
@@ -23,6 +25,8 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// JupgingLog is the client for interacting with the JupgingLog builders.
+	JupgingLog *JupgingLogClient
 	// Member is the client for interacting with the Member builders.
 	Member *MemberClient
 }
@@ -36,6 +40,7 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.JupgingLog = NewJupgingLogClient(c.config)
 	c.Member = NewMemberClient(c.config)
 }
 
@@ -127,9 +132,10 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		Member: NewMemberClient(cfg),
+		ctx:        ctx,
+		config:     cfg,
+		JupgingLog: NewJupgingLogClient(cfg),
+		Member:     NewMemberClient(cfg),
 	}, nil
 }
 
@@ -147,16 +153,17 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:    ctx,
-		config: cfg,
-		Member: NewMemberClient(cfg),
+		ctx:        ctx,
+		config:     cfg,
+		JupgingLog: NewJupgingLogClient(cfg),
+		Member:     NewMemberClient(cfg),
 	}, nil
 }
 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		Member.
+//		JupgingLog.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -178,22 +185,175 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
+	c.JupgingLog.Use(hooks...)
 	c.Member.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
+	c.JupgingLog.Intercept(interceptors...)
 	c.Member.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *JupgingLogMutation:
+		return c.JupgingLog.mutate(ctx, m)
 	case *MemberMutation:
 		return c.Member.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// JupgingLogClient is a client for the JupgingLog schema.
+type JupgingLogClient struct {
+	config
+}
+
+// NewJupgingLogClient returns a client for the JupgingLog from the given config.
+func NewJupgingLogClient(c config) *JupgingLogClient {
+	return &JupgingLogClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `jupginglog.Hooks(f(g(h())))`.
+func (c *JupgingLogClient) Use(hooks ...Hook) {
+	c.hooks.JupgingLog = append(c.hooks.JupgingLog, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `jupginglog.Intercept(f(g(h())))`.
+func (c *JupgingLogClient) Intercept(interceptors ...Interceptor) {
+	c.inters.JupgingLog = append(c.inters.JupgingLog, interceptors...)
+}
+
+// Create returns a builder for creating a JupgingLog entity.
+func (c *JupgingLogClient) Create() *JupgingLogCreate {
+	mutation := newJupgingLogMutation(c.config, OpCreate)
+	return &JupgingLogCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of JupgingLog entities.
+func (c *JupgingLogClient) CreateBulk(builders ...*JupgingLogCreate) *JupgingLogCreateBulk {
+	return &JupgingLogCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *JupgingLogClient) MapCreateBulk(slice any, setFunc func(*JupgingLogCreate, int)) *JupgingLogCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &JupgingLogCreateBulk{err: fmt.Errorf("calling to JupgingLogClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*JupgingLogCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &JupgingLogCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for JupgingLog.
+func (c *JupgingLogClient) Update() *JupgingLogUpdate {
+	mutation := newJupgingLogMutation(c.config, OpUpdate)
+	return &JupgingLogUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *JupgingLogClient) UpdateOne(jl *JupgingLog) *JupgingLogUpdateOne {
+	mutation := newJupgingLogMutation(c.config, OpUpdateOne, withJupgingLog(jl))
+	return &JupgingLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *JupgingLogClient) UpdateOneID(id int) *JupgingLogUpdateOne {
+	mutation := newJupgingLogMutation(c.config, OpUpdateOne, withJupgingLogID(id))
+	return &JupgingLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for JupgingLog.
+func (c *JupgingLogClient) Delete() *JupgingLogDelete {
+	mutation := newJupgingLogMutation(c.config, OpDelete)
+	return &JupgingLogDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *JupgingLogClient) DeleteOne(jl *JupgingLog) *JupgingLogDeleteOne {
+	return c.DeleteOneID(jl.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *JupgingLogClient) DeleteOneID(id int) *JupgingLogDeleteOne {
+	builder := c.Delete().Where(jupginglog.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &JupgingLogDeleteOne{builder}
+}
+
+// Query returns a query builder for JupgingLog.
+func (c *JupgingLogClient) Query() *JupgingLogQuery {
+	return &JupgingLogQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeJupgingLog},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a JupgingLog entity by its id.
+func (c *JupgingLogClient) Get(ctx context.Context, id int) (*JupgingLog, error) {
+	return c.Query().Where(jupginglog.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *JupgingLogClient) GetX(ctx context.Context, id int) *JupgingLog {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryMember queries the member edge of a JupgingLog.
+func (c *JupgingLogClient) QueryMember(jl *JupgingLog) *MemberQuery {
+	query := (&MemberClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := jl.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(jupginglog.Table, jupginglog.FieldID, id),
+			sqlgraph.To(member.Table, member.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, jupginglog.MemberTable, jupginglog.MemberColumn),
+		)
+		fromV = sqlgraph.Neighbors(jl.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *JupgingLogClient) Hooks() []Hook {
+	return c.hooks.JupgingLog
+}
+
+// Interceptors returns the client interceptors.
+func (c *JupgingLogClient) Interceptors() []Interceptor {
+	return c.inters.JupgingLog
+}
+
+func (c *JupgingLogClient) mutate(ctx context.Context, m *JupgingLogMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&JupgingLogCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&JupgingLogUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&JupgingLogUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&JupgingLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown JupgingLog mutation op: %q", m.Op())
 	}
 }
 
@@ -305,6 +465,22 @@ func (c *MemberClient) GetX(ctx context.Context, id int) *Member {
 	return obj
 }
 
+// QueryJupgingLog queries the jupgingLog edge of a Member.
+func (c *MemberClient) QueryJupgingLog(m *Member) *JupgingLogQuery {
+	query := (&JupgingLogClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(member.Table, member.FieldID, id),
+			sqlgraph.To(jupginglog.Table, jupginglog.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, member.JupgingLogTable, member.JupgingLogColumn),
+		)
+		fromV = sqlgraph.Neighbors(m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *MemberClient) Hooks() []Hook {
 	return c.hooks.Member
@@ -333,9 +509,9 @@ func (c *MemberClient) mutate(ctx context.Context, m *MemberMutation) (Value, er
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Member []ent.Hook
+		JupgingLog, Member []ent.Hook
 	}
 	inters struct {
-		Member []ent.Interceptor
+		JupgingLog, Member []ent.Interceptor
 	}
 )
